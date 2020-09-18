@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SmartCafe</string>
+    <string name="btn_logout">Sign out</string>
+<!--    <string name="default_web_client_id">145510112070-u1b6muc03k6mr0ipjge21e5g7ri7p3l2.apps.googleusercontent.com</string>-->
+</resources>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DiffuserSetting"
+    android:orientation="vertical">
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PREV."
+        android:textSize="20dp"
+        android:layout_marginTop="30dp"
+        android:layout_marginLeft="20dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        android:id="@+id/diffuser_setting_prev"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="20dp"
+        android:layout_marginTop="30dp"
+        android:text="DIFFUSER\nSETTING"
+        android:textSize="50dp"
+        android:fontFamily="@font/notosanskr_medium"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="30dp"
+        android:layout_marginTop="50dp"
+        android:text="Number of Times"
+        android:textSize="25dp"
+        android:fontFamily="@font/notosanskr_medium"/>
+
+    <SeekBar
+        android:id="@+id/diffuser_setting_repeat_seekbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="4"
+        android:min="0"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
+        android:layout_marginTop="10dp"
+        style="@style/Widget.AppCompat.SeekBar.Discrete"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15dp"
+        android:layout_marginTop="10dp"
+        android:layout_gravity="center"
+        android:fontFamily="@font/notosanskr_medium"
+        android:id="@+id/diffuser_setting_repeat_seekbar_text"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="30dp"
+        android:layout_marginTop="20dp"
+        android:text="Period"
+        android:textSize="25dp"
+        android:fontFamily="@font/notosanskr_medium"/>
+
+    <SeekBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/diffuser_setting_period_seekbar"
+        android:layout_gravity="center"
+        android:max="60"
+        android:min="5"
+        android:progress="20"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
+        android:layout_marginTop="10dp"
+        android:thumb="@drawable/baseline_radio_button_unchecked_black_24dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15dp"
+        android:layout_marginTop="10dp"
+        android:layout_gravity="center"
+        android:fontFamily="@font/notosanskr_medium"
+        android:id="@+id/diffuser_setting_period_seekbar_text"/>
+
+
+
+
+</LinearLayout>
