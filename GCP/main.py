@@ -181,7 +181,7 @@ def hello_pubsub(event, context):
     print("start google cloud function!")
     message = base64.b64decode(event['data']).decode('utf-8')
     message_dict = json.loads(message)
-    credentials_for_storage = service_account.Credentials.from_service_account_file('./smartcafe-286310-7630ecb69883.json')
+    credentials_for_storage = service_account.Credentials.from_service_account_file('./smartcafe-286310-7630ecb69883.json')  # input your service account json key path
     scoped_credentials = credentials_for_storage.with_scopes(['https://www.googleapis.com/auth/cloud-platform'])
     client = storage.Client(project='smartcafe-286310', credentials=credentials_for_storage)
     email = message_dict['email']
