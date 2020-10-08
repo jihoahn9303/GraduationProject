@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.res.AssetManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
@@ -13,45 +15,39 @@ import com.google.api.core.ApiFuture
 import com.google.api.gax.core.FixedCredentialsProvider
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.pubsub.v1.Publisher
-import com.google.cloud.pubsub.v1.Subscriber
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.gson.JsonObject
 import com.google.protobuf.ByteString
 import com.google.pubsub.v1.PubsubMessage
 import com.google.pubsub.v1.TopicName
-import com.google.gson.*
 import kotlinx.android.synthetic.main.activity_send_photos.*
+import kotlinx.coroutines.*
+import kr.ac.konkuk.smartcafe.LoginActivity.Companion.token
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
-import kotlinx.coroutines.*
-import kr.ac.konkuk.smartcafe.LoginActivity.Companion.token
 import kotlin.coroutines.CoroutineContext
 
 
 class SendPhotos : AppCompatActivity(), CoroutineScope {
-    lateinit var job: Job
+    private lateinit var job: Job
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Main + job
     private var images: ArrayList<Uri?>? = null
-    private var position = 0;
-    private val PICK_IMAGES_CODE = 0;
-    private var count = 0;
+    private var position = 0
+    private val PICK_IMAGES_CODE = 0
+    private var count = 0
     private var storage : FirebaseStorage? = null
     private var auth : FirebaseAuth? = null
-    private var firestore : FirebaseFirestore? = null
     private var fileUploadSuccessFlag : Boolean? = false
     private var publisher : Publisher? = null
-    private lateinit var emailName : String
     private val projectId = "smartcafe-286310"
     private val topicId = "request-classfier"
 
-    companion object {
-        var category : String? = "basic"
-    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +56,7 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
 
         storage = FirebaseStorage.getInstance()
         auth = FirebaseAuth.getInstance()
-        firestore = FirebaseFirestore.getInstance()
+//        firestore = FirebaseFirestore.getInstance()
 
         images = ArrayList()
 
@@ -107,19 +103,20 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
     }
 
     private fun sendImagesIntent(){
+        Log.d("count", "$count")
         if (count == 0){
-            Toast.makeText(this, "보낼 수 있는 이미지가 없습니다...", Toast.LENGTH_SHORT).show()
+            val mHandler = Handler(Looper.getMainLooper())
+            mHandler.postDelayed(Runnable { Toast.makeText(this, "보낼 수 있는 이미지가 없습니다...", Toast.LENGTH_SHORT).show() }, 0)
         }
         else{
             Log.d("start", "image send start")
-            emailName = intent.getStringExtra("email")  // 인텐트 값 저장(사용자 이메일)
             for (i in 0 until count){
                 var photoUri = images?.get(i)
 
                 var timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
                 var imageFileName = "${i}"+"${timestamp}.jpeg"
 
-                var storageRef = storage?.reference?.child(emailName)?.child(imageFileName)
+                var storageRef = storage?.reference?.child(LoginActivity.userEmail!!)?.child(imageFileName)
                 storageRef?.putFile(photoUri!!)
 
                 if (i == count - 1) { fileUploadSuccessFlag = true }
@@ -173,9 +170,9 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
                 publisher = Publisher.newBuilder(topicName).setCredentialsProvider(FixedCredentialsProvider.create(creds)).build()
                 Log.d("publish", "$publisher")
 
-                val jsonObject : JsonObject = JsonObject()
+                val jsonObject = JsonObject()
                 jsonObject.addProperty("token", token)
-                jsonObject.addProperty("email", emailName)
+                jsonObject.addProperty("email", LoginActivity.userEmail!!)
                 val data = ByteString.copyFromUtf8(jsonObject.toString())
                 val pubsubMessage = PubsubMessage.newBuilder().setData(data).build()
                 Log.d("message", "$pubsubMessage")

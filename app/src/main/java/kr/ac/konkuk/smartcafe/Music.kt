@@ -55,6 +55,6 @@ class Music : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
             }
         })
-
     }
+
 }

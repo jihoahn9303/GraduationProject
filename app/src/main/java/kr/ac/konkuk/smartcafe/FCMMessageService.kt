@@ -10,19 +10,27 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
-class FCMMessageService : FirebaseMessagingService() {
+
+class FCMMessageService : FirebaseMessagingService(){
+
     override fun onMessageReceived(p0: RemoteMessage) {
         Log.d("arrive", "Message Arrive")
         Log.d("arrived_data", "${p0.data}")
         Log.d("arrived_title", "${p0.data["title"]}")
         Log.d("arrived_message", "${p0.data["message"]}")
         if(p0.data != null){
-            SendPhotos.category = p0.data["message"]
-            Log.d("category", "${SendPhotos.category}")
+//            SetOptions.category = p0.data["message"]
+            Log.d("category", "${SetOptions.category}")
             sendNotification(p0.data["title"], p0.data["message"])
+            updateCategoryOnFirestore(p0.data["message"])
         }
     }
 
@@ -59,5 +67,32 @@ class FCMMessageService : FirebaseMessagingService() {
             val notificationManager = context.getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
+    }
+
+    private fun updateCategoryOnFirestore(category : String?) {
+        Thread(Runnable {
+            val subpath = LoginActivity.userEmail?.split("@")!![0]
+            val ref = Firebase.database.reference
+            ref.child("userInfo").child("$subpath")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        var map = snapshot.value
+                        if (map != null) {
+                            Log.d("snapshot_update", "$category")
+                            var update_map = mutableMapOf<String, Any>()
+                            update_map["category"] = category!!
+
+                            ref.child("userInfo").child("$subpath")
+                                .updateChildren(update_map)
+
+//                            SetOptions.category = category
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+
+                    }
+                })
+        }).start()
     }
 }

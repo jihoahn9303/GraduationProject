@@ -24,7 +24,7 @@ import java.util.*
 class Camera : AppCompatActivity() {
 
     val REQUEST_IMAGE_CAPTURE = 1
-    lateinit var curPhotoPath : String
+    private lateinit var curPhotoPath : String
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,9 +37,7 @@ class Camera : AppCompatActivity() {
             takeCapture()
         }
         btn_camera2.setOnClickListener {
-            val userEmail = intent.getStringExtra("email")
             val intent = Intent(this@Camera, SendPhotos::class.java)
-            intent.putExtra("email", userEmail)
             startActivity(intent)
         }
 

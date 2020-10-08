@@ -1,5 +1,7 @@
 package kr.ac.konkuk.smartcafe
 
+//import com.google.firebase.database.ktx.database
+//import com.google.firebase.ktx.Firebase
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
@@ -14,18 +16,30 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.Task
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.ktx.database
+import com.google.firebase.iid.FirebaseInstanceId
+import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_login.*
-import kotlin.system.exitProcess
-import com.google.firebase.iid.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import java.io.IOException
+import kotlin.coroutines.CoroutineContext
+import kotlin.system.exitProcess
 
 
-class LoginActivity : AppCompatActivity(), View.OnClickListener {
+class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope {
+
+    private lateinit var job: Job
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
 
     //firebase Auth
     private lateinit var firebaseAuth: FirebaseAuth
@@ -34,6 +48,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
     companion object {
         // Registeration token for FCM Client App Instance
         var token: String? = null
+        var userEmail: String? = null
     }
 
     //private const val TAG = "GoogleActivity"
@@ -42,6 +57,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
+        job = Job()
 
         //Google 로그인 옵션 구성. requestIdToken 및 Email 요청
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -87,20 +103,27 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
             val dlg: AlertDialog.Builder = AlertDialog.Builder(this@LoginActivity,  android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar_MinWidth)
             dlg.setTitle("종료.") //제목
             dlg.setMessage("어플리케이션을 종료하시겠습니까?.") // 메시지
-            dlg.setPositiveButton("예", DialogInterface.OnClickListener { dialog, _ ->
+            dlg.setPositiveButton("예") { dialog, _ ->
                 dialog.dismiss()
                 val account = GoogleSignIn.getLastSignedInAccount(this)
-                if(account!==null) {signOut()}
+                if (account !== null) {
+                    signOut()
+                }
                 ActivityCompat.finishAffinity(this)
                 exitProcess(0)
-            })
+            }
             dlg.setNegativeButton("아니오") { dialog, _ -> dialog.dismiss() }
             dlg.show()
         }
     } //onStart End
 
+    override fun onDestroy() {
+        super.onDestroy()
+        job.cancel()
+    }
+
     private fun myToken() {
-        Thread(Runnable {
+        Thread {
             try {
                 FirebaseInstanceId.getInstance().instanceId
                     .addOnCompleteListener(OnCompleteListener { task ->
@@ -109,13 +132,13 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
                             return@OnCompleteListener
                         }
                         token = task.result?.token
-                        Log.d("token", token)
+                        Log.d("token", token!!)
                         //Log.d(TAG, token)
                     })
-            } catch (e: IOException){
+            } catch (e: IOException) {
                 e.printStackTrace()
             }
-        }).start()
+        }.start()
     }
 
     // onActivityResult
@@ -149,7 +172,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     Log.w("LoginActivity", "firebaseAuthWithGoogle 성공", task.exception)
-                    toMainActivity(firebaseAuth?.currentUser)
+                    toMainActivity(firebaseAuth.currentUser)
                 } else {
                     Log.w("LoginActivity", "firebaseAuthWithGoogle 실패", task.exception)
                     Snackbar.make(findViewById(R.id.activity_login), "로그인에 실패하였습니다.", Snackbar.LENGTH_SHORT).show()
@@ -161,9 +184,9 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
     // toMainActivity
     private fun toMainActivity(user: FirebaseUser?) {
         if(user !=null) {
-            val userEmail = user?.email  // 사용자(자신)의 이메일
+            userEmail = user.email  // 사용자(자신)의 이메일
+            addUserInFirestore()
             val intent = Intent(this@LoginActivity, SetOptions::class.java)
-            intent.putExtra("email", userEmail)  // 인텐트로 값 전송
             startActivity(intent)
             finish()
         }
@@ -181,7 +204,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
 
 
     private fun signOut() { // 로그아웃
-        if(firebaseAuth?.currentUser != null){
+        if(firebaseAuth.currentUser != null){
             // Firebase sign out
             firebaseAuth.signOut()
 
@@ -194,13 +217,47 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener {
         else { Snackbar.make(findViewById(R.id.activity_login), "로그인 상태가 아닙니다.", Snackbar.LENGTH_SHORT).show() }
     }
 
-    private fun revokeAccess() { //회원탈퇴
-        // Firebase sign out
-        firebaseAuth.signOut()
-        googleSignInClient.revokeAccess().addOnCompleteListener(this) {
+//    private fun revokeAccess() { //회원탈퇴
+//        // Firebase sign out
+//        firebaseAuth.signOut()
+//        googleSignInClient.revokeAccess().addOnCompleteListener(this) {
+//
+//        }
+//    }
 
-        }
+    private fun addUserInFirestore() {
+        Thread(kotlinx.coroutines.Runnable {
+            val subpath = userEmail?.split("@")!![0]
+            val ref = Firebase.database.reference
+            ref.child("userInfo").child("$subpath")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val map = snapshot.value
+                        if (map == null) {
+                            Log.d("snapshotnull", "null")
+                            var insert_map = mutableMapOf<String, Any>()
+                            insert_map["token"] = token!!
+                            insert_map["category"] = "basic"
+
+                            ref.child("userInfo").child("$subpath")
+                                .setValue(insert_map)
+                        }
+
+                        else {
+                            val submap = map as Map<String, Any>
+                            if (submap["token"].toString() != token) {
+                                var update_map = mutableMapOf<String, Any>()
+                                update_map["token"] = token!!
+                                ref.child("userInfo").child("$subpath")
+                                    .updateChildren(update_map)
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+
+                    }
+                })
+        }).start()
     }
-
-
 }
