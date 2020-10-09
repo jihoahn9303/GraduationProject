@@ -21,7 +21,8 @@ class Connect : AppCompatActivity() {
         }
 
         connect_diffuser.setOnClickListener {
-
+            val intent = Intent(this@Connect, DeviceScanActivity::class.java)
+            startActivity(intent)
         }
     }
 }
