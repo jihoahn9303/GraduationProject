@@ -12,7 +12,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.*
 import android.widget.ExpandableListView.OnChildClickListener
+import kotlinx.coroutines.*
 import java.util.*
+import kotlin.coroutines.CoroutineContext
 
 
 /**
@@ -21,7 +23,10 @@ import java.util.*
  * device. The Activity communicates with `BluetoothLeService`, which in
  * turn interacts with the Bluetooth LE API.
  */
-class DeviceControlActivity : Activity() {
+class DeviceControlActivity : Activity(), CoroutineScope {
+    private lateinit var job: Job
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
     private var mConnectionState: TextView? = null
     private var mDataField: TextView? = null
     private var mDeviceName: String? = null
@@ -132,6 +137,7 @@ class DeviceControlActivity : Activity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.gatt_services_characteristics)
+        job = Job()
         val intent = intent
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME)   // name of device
         mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS)  // address of device
@@ -142,8 +148,8 @@ class DeviceControlActivity : Activity() {
         mGattServicesList!!.setOnChildClickListener(servicesListClickListener)  //  3. insert the click listener on list view
         mConnectionState = findViewById<View>(R.id.connection_state) as TextView  // 4. init the text view which shows a connection state
         mDataField = findViewById<View>(R.id.data_value) as TextView  // 5. init the text view which shows a data from arduino
-        actionBar!!.title = mDeviceName  // 6. set name of actionbar
-        actionBar!!.setDisplayHomeAsUpEnabled(true)  // 7. insert arrow. When user touchs it, he moves to previous activity
+        actionBar?.title = mDeviceName  // 6. set name of actionbar
+        actionBar?.setDisplayHomeAsUpEnabled(true)  // 7. insert arrow. When user touchs it, he moves to previous activity
         val gattServiceIntent = Intent(this@DeviceControlActivity, BluetoothLeService::class.java)  // 8. create intent
         /**
          * function in BluetoothLeService can be called by this code.
@@ -154,26 +160,27 @@ class DeviceControlActivity : Activity() {
 
     // setupSerial : set serial characteristics
     private fun setupSerial() {
+        Thread(Runnable{
+            // blechat - set serial characteristics
+            var uuid: String
+            val unknownServiceString = resources.getString(
+                R.string.unknown_service
+            )
+            for (gattService in mBluetoothLeService?.supportedGattServices!!) {
+                uuid = gattService.uuid.toString()
+                Log.d(TAG, "UUID : $uuid")
 
-        // blechat - set serial characteristics
-        var uuid: String
-        val unknownServiceString = resources.getString(
-            R.string.unknown_service
-        )
-        for (gattService in mBluetoothLeService?.supportedGattServices!!) {
-            uuid = gattService.uuid.toString()
-            Log.d(TAG, "UUID : $uuid")
-
-            // If the service exists for HM 10 Serial, say so.
-            if (SampleGattAttributes.lookup(uuid, unknownServiceString) == "HM 10 Serial") {
-                // get characteristic when UUID matches RX/TX UUID
-                Log.d(TAG, "CLEAR")
-                characteristicTX = gattService.getCharacteristic(BluetoothLeService.UUID_HM_RX_TX)
-                characteristicRX = gattService.getCharacteristic(BluetoothLeService.UUID_HM_RX_TX)
-                mBluetoothLeService?.setCharacteristicNotification(characteristicTX!!, true)
-                break
-            } // if
-        } // for
+                // If the service exists for HM 10 Serial, say so.
+                if (SampleGattAttributes.lookup(uuid, unknownServiceString) == "HM 10 Serial") {
+                    // get characteristic when UUID matches RX/TX UUID
+                    Log.d(TAG, "CLEAR")
+                    characteristicTX = gattService.getCharacteristic(BluetoothLeService.UUID_HM_RX_TX)
+                    characteristicRX = gattService.getCharacteristic(BluetoothLeService.UUID_HM_RX_TX)
+                    mBluetoothLeService?.setCharacteristicNotification(characteristicTX!!, true)
+                    break
+                } // if
+            } // for
+        }).start()
     }
 
     // blechat
@@ -192,11 +199,13 @@ class DeviceControlActivity : Activity() {
     override fun onResume() {
         super.onResume()
         // enroll the broadcast where BluetoothLeService send a connection state or data.
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
-        if (mBluetoothLeService != null) {
-            val result: Boolean? = mBluetoothLeService?.connect(mDeviceAddress)  // connect
-            Log.d(TAG, "Connect request result=$result")
-        }
+        Thread(Runnable {
+            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+            if (mBluetoothLeService != null) {
+                val result = mBluetoothLeService?.connect(mDeviceAddress) // connect
+                Log.d(TAG, "Connect request result=$result")
+            }
+        }).start()
     }
 
     override fun onPause() {
@@ -208,6 +217,7 @@ class DeviceControlActivity : Activity() {
         super.onDestroy()
         unbindService(mServiceConnection)
         mBluetoothLeService = null
+        job.cancel()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -323,24 +333,28 @@ class DeviceControlActivity : Activity() {
     // blechat
     // btnClick Click handler for Send button
     // communication_layout.xml
-    fun btnClick(view: View?) {
+    suspend fun btnClick(view: View?) {
         sendSerial()
     }
 
     // blechat
     // sendSerial : Send string io out field
-    private fun sendSerial() {
-        val view = findViewById<View>(R.id.edit_text_out) as TextView
-        val message = view.text.toString()
-        Log.d(TAG, "Sending: $message")
-        val tx = message.toByteArray()
-        if (mConnected) {
-            characteristicTX!!.value = tx
-            mBluetoothLeService?.writeCharacteristic(characteristicTX)
-
-            // clear text
-            view.text = ""
-        } // if
+    private suspend fun sendSerial() {
+        val jobSendSerial = launch(Dispatchers.IO, CoroutineStart.LAZY) {
+            val view = findViewById<View>(R.id.edit_text_out) as TextView
+            val message = view.text.toString()
+            Log.d(TAG, "Sending: $message")
+            val tx = message.toByteArray()
+            if (mConnected) {
+                characteristicTX!!.value = tx
+                mBluetoothLeService?.writeCharacteristic(characteristicTX)
+                launch(Dispatchers.Main, CoroutineStart.LAZY) {
+                    // clear text
+                    view.text = ""
+                }.join()
+            } // if
+        }
+        jobSendSerial.join()
     }
 
     public override fun onStop() {
