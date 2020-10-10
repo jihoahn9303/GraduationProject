@@ -46,8 +46,12 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".LoginActivity" />
         </activity> <!-- <activity android:name=".MainActivity"></activity> -->
-        <activity android:name=".DeviceScanActivity"/>
-        <activity android:name=".DeviceControlActivity">
+        <activity
+            android:name=".DeviceScanActivity"
+            android:theme="@android:style/Theme.Holo.Light.DarkActionBar">
+        </activity>
+        <activity android:name=".DeviceControlActivity"
+            android:theme="@android:style/Theme.Holo.Light.DarkActionBar">
             <intent-filter>
                 <action android:name="com.example.bluetooth.le.ACTION_GATT_CONNECTED"/>
             </intent-filter>
@@ -65,6 +69,7 @@
             </intent-filter>
         </activity>
         <service android:name=".BluetoothLeService" android:enabled="true"/>
+
         <service
             android:name=".FCMMessageService"
             android:enabled="true"
