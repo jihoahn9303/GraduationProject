@@ -24,13 +24,12 @@ class DeviceScanActivity : ListActivity(){
 
     private val REQUEST_ENABLE_BT = 1
 
-    private val mInflater : LayoutInflater = layoutInflater
-
     // Stops scanning after 10 seconds.
     private val SCAN_PERIOD: Long = 10000
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         actionBar?.setTitle(R.string.title_devices)
         mHandler = Handler()
 
@@ -53,7 +52,7 @@ class DeviceScanActivity : ListActivity(){
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.main, menu)
+        menuInflater?.inflate(R.menu.main, menu)
         if (!mScanning) {
             menu.findItem(R.id.menu_stop).isVisible = false
             menu.findItem(R.id.menu_scan).isVisible = true
@@ -68,8 +67,8 @@ class DeviceScanActivity : ListActivity(){
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when (item?.itemId) {
             R.id.menu_scan -> {
                 mLeDeviceListAdapter!!.clear()
                 scanLeDevice(true)
@@ -114,7 +113,7 @@ class DeviceScanActivity : ListActivity(){
 
     override fun onListItemClick(l: ListView?, v: View?, position: Int, id: Long) {
         val device = mLeDeviceListAdapter!!.getDevice(position) ?: return
-        val intent = Intent(this, DeviceControlActivity::class.java)
+        val intent = Intent(this@DeviceScanActivity, DeviceControlActivity::class.java)
         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.name)
         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.address)
         if (mScanning) {
@@ -144,6 +143,7 @@ class DeviceScanActivity : ListActivity(){
     // Adapter for holding devices found through scanning.
     inner class LeDeviceListAdapter : BaseAdapter() {
         private val mLeDevices: ArrayList<BluetoothDevice> = ArrayList()
+        private var mInflater : LayoutInflater = layoutInflater
 
         fun addDevice(device: BluetoothDevice) {
             if (!mLeDevices.contains(device)) {
@@ -171,7 +171,7 @@ class DeviceScanActivity : ListActivity(){
             return i.toLong()
         }
 
-        override fun getView(i: Int, view: View, viewGroup: ViewGroup): View {
+        override fun getView(i: Int, view: View?, viewGroup: ViewGroup): View {
             var view = view
             val viewHolder: ViewHolder
             // General ListView optimization code.
@@ -189,7 +189,7 @@ class DeviceScanActivity : ListActivity(){
             if (deviceName != null && deviceName.isNotEmpty()) viewHolder.deviceName!!.text =
                 deviceName else viewHolder.deviceName?.setText(R.string.unknown_device)
             viewHolder.deviceAddress?.text = device.address
-            return view
+            return view!!
         }
     }
 
