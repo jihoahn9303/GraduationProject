@@ -60,7 +60,7 @@ class MusicPlayer : AppCompatActivity() {
 
 
     private fun retrieveSongs() {
-        val databaseReference = FirebaseDatabase.getInstance().getReference("Songs")
+        val databaseReference = FirebaseDatabase.getInstance().getReference("Songs").child("${SetOptions.category}")
         databaseReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.value != null) {
@@ -98,7 +98,7 @@ class MusicPlayer : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.nav_upload) {
             if (validatePermision()) {
-                pickSong()
+//                 pickSong()
             }
         }
         return super.onOptionsItemSelected(item)
