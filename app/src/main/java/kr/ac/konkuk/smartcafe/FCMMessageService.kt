@@ -83,6 +83,8 @@ class FCMMessageService : FirebaseMessagingService(){
 
                             ref.child("userInfo").child("$subpath")
                                 .updateChildren(update_map)
+                            
+                            LoginActivity.category = category!!
 
                         }
                     }
