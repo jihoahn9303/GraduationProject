@@ -27,8 +27,7 @@ class FCMMessageService : FirebaseMessagingService(){
         Log.d("arrived_title", "${p0.data["title"]}")
         Log.d("arrived_message", "${p0.data["message"]}")
         if(p0.data != null){
-//            SetOptions.category = p0.data["message"]
-            Log.d("category", "${SetOptions.category}")
+            Log.d("category", "${LoginActivity.category}")
             sendNotification(p0.data["title"], p0.data["message"])
             updateCategoryOnFirestore(p0.data["message"])
         }
@@ -85,7 +84,6 @@ class FCMMessageService : FirebaseMessagingService(){
                             ref.child("userInfo").child("$subpath")
                                 .updateChildren(update_map)
 
-//                            SetOptions.category = category
                         }
                     }
 
