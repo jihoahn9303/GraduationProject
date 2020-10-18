@@ -10,20 +10,9 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_set_options.*
-import kotlinx.coroutines.*
-import kotlin.coroutines.CoroutineContext
 
 
-class SetOptions : AppCompatActivity(), CoroutineScope {
-
-    private lateinit var job: Job
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Main + job
-    private lateinit var ioScope : CoroutineScope
-
-    companion object {
-        var category : String? = "basic"
-    }
+class SetOptions : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,29 +50,13 @@ class SetOptions : AppCompatActivity(), CoroutineScope {
         }
 
         set_options_music.setOnClickListener {
-            launch {
-                val jobReadCategory = launch(Dispatchers.IO, CoroutineStart.LAZY) {readCategory()}
-                jobReadCategory.join()
-                val intent = Intent(this@SetOptions, MusicPlayer::class.java)
-                startActivity(intent)
-            }
+            val intent = Intent(this@SetOptions, MusicPlayer::class.java)
+            startActivity(intent)
         }
     }
 
-    private fun readCategory() {
-        Log.d("start", "start reading category!")
-        val subpath = LoginActivity.userEmail?.split("@")!![0]
-        val ref = Firebase.database.reference
-        ref.child("userInfo").child(subpath)
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var map = snapshot.value as Map<String, Any>
-                    category = map["category"].toString()
-                    Log.d("read_category", "$category")
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-
-            })
+    override fun onDestroy() {
+        super.onDestroy()
+        job.cancel()
     }
 }
