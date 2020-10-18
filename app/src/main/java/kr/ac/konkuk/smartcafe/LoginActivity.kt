@@ -1,8 +1,6 @@
 package kr.ac.konkuk.smartcafe
 
-//import com.google.firebase.database.ktx.database
-//import com.google.firebase.ktx.Firebase
-import android.content.DialogInterface
+
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -49,6 +47,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
         // Registeration token for FCM Client App Instance
         var token: String? = null
         var userEmail: String? = null
+        var category: String? = null
     }
 
     //private const val TAG = "GoogleActivity"
@@ -78,10 +77,6 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
 
     public override fun onStart() {
         super.onStart()
-//        val account = GoogleSignIn.getLastSignedInAccount(this)
-//        if(account!==null){ // 이미 로그인 되어있을시 바로 메인 액티비티로 이동
-//            toMainActivity(firebaseAuth.currentUser)
-//        }
 
         //btn_googleSignIn.setOnClickListener (this) // 구글 로그인 버튼
         btn_googleSignIn.setOnClickListener {
@@ -217,14 +212,6 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
         else { Snackbar.make(findViewById(R.id.activity_login), "로그인 상태가 아닙니다.", Snackbar.LENGTH_SHORT).show() }
     }
 
-//    private fun revokeAccess() { //회원탈퇴
-//        // Firebase sign out
-//        firebaseAuth.signOut()
-//        googleSignInClient.revokeAccess().addOnCompleteListener(this) {
-//
-//        }
-//    }
-
     private fun addUserInFirestore() {
         Thread(kotlinx.coroutines.Runnable {
             val subpath = userEmail?.split("@")!![0]
@@ -238,6 +225,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
                             var insert_map = mutableMapOf<String, Any>()
                             insert_map["token"] = token!!
                             insert_map["category"] = "basic"
+                            category = "basic"
 
                             ref.child("userInfo").child("$subpath")
                                 .setValue(insert_map)
@@ -251,6 +239,7 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
                                 ref.child("userInfo").child("$subpath")
                                     .updateChildren(update_map)
                             }
+                            category = submap["category"].toString()
                         }
                     }
 
