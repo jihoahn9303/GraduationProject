@@ -60,7 +60,7 @@ class MusicPlayer : AppCompatActivity() {
 
 
     private fun retrieveSongs() {
-        val databaseReference = FirebaseDatabase.getInstance().getReference("Songs").child("${SetOptions.category}")
+        val databaseReference = FirebaseDatabase.getInstance().getReference("Songs").child("${LoginActivity.category}")
         databaseReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.value != null) {
