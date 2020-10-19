@@ -84,7 +84,7 @@ class DeviceScanActivity : ListActivity(){
 
         // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
         // fire an intent to display a dialog asking the user to grant permission to enable it.
-        mBluetoothAdapter?.takeIf { it.isEnabled }?.apply {
+        mBluetoothAdapter?.takeIf { !(it.isEnabled) }?.apply {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
         }
