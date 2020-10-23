@@ -23,12 +23,15 @@ import com.google.pubsub.v1.PubsubMessage
 import com.google.pubsub.v1.TopicName
 import kotlinx.android.synthetic.main.activity_send_photos.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kr.ac.konkuk.smartcafe.LoginActivity.Companion.token
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
+import kotlin.concurrent.timer
 import kotlin.coroutines.CoroutineContext
 
 
@@ -40,6 +43,7 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
     private var position = 0
     private val PICK_IMAGES_CODE = 0
     private var count = 0
+    private var send_photo_count = 0
     private var storage : FirebaseStorage? = null
     private var auth : FirebaseAuth? = null
     private var fileUploadSuccessFlag : Boolean? = false
@@ -87,18 +91,12 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         }
 
         sendImagesBtn.setOnClickListener {
-            launch {
-                val jobSendPhotos = launch(Dispatchers.IO, CoroutineStart.LAZY) {sendImagesIntent()}
-                val jobPublish = launch(Dispatchers.IO, CoroutineStart.LAZY) {
-                    publishToTopic()
-                }
-                Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
-                jobSendPhotos.join()
-                jobPublish.join()
+            Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
+            launch(Dispatchers.IO) {
+                val jobSendPhoto = launch(Dispatchers.IO) { sendImagesIntent() }
+                jobSendPhoto.join()
+                publishToTopic()
             }
-//            Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
-//            sendImagesIntent()
-//            publishToTopic()
         }
     }
 
@@ -115,17 +113,17 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         }
         else{
             Log.d("start", "image send start")
+            send_photo_count = 0
             for (i in 0 until count){
                 var photoUri = images?.get(i)
-
                 var timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
-//                var imageFileName = "${i}"+"${timestamp}.jpeg"
                 var imageFileName = "$timestamp($i).jpeg"
-
                 var storageRef = storage?.reference?.child(LoginActivity.userEmail!!)?.child(imageFileName)
-                storageRef?.putFile(photoUri!!)
 
-                if (i == count - 1) { fileUploadSuccessFlag = true }
+                storageRef?.putFile(photoUri!!)?.addOnSuccessListener {
+                    send_photo_count += 1
+                }
+//                if (i == count - 1) { fileUploadSuccessFlag = true }
             }
         }
     }
@@ -165,36 +163,40 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         }
     }
 
-    private fun publishToTopic() {
-        if(fileUploadSuccessFlag == true) {
-            try {
-                val topicName : TopicName = TopicName.of(projectId, topicId)
-                val am : AssetManager = resources.assets
-                val fileInputStream : InputStream? = am.open("smartcafe-286310-7630ecb69883.json")
-                val creds = ServiceAccountCredentials.fromStream(fileInputStream)
-                // Create a publisher instance with default settings bound to the topic
-                publisher = Publisher.newBuilder(topicName).setCredentialsProvider(FixedCredentialsProvider.create(creds)).build()
-                Log.d("publish", "$publisher")
+    private suspend fun publishToTopic() {
+        while (send_photo_count != 3) {
+            Log.d("send_count", "$send_photo_count")
+            delay(1000L)
+        }
 
-                val jsonObject = JsonObject()
-                jsonObject.addProperty("token", token)
-                jsonObject.addProperty("email", LoginActivity.userEmail!!)
-                val data = ByteString.copyFromUtf8(jsonObject.toString())
-                val pubsubMessage = PubsubMessage.newBuilder().setData(data).build()
-                Log.d("message", "$pubsubMessage")
+        try {
+            Log.d("send_count", "start to publish!")
+            val topicName : TopicName = TopicName.of(projectId, topicId)
+            val am : AssetManager = resources.assets
+            val fileInputStream : InputStream? = am.open("smartcafe-286310-7630ecb69883.json")
+            val creds = ServiceAccountCredentials.fromStream(fileInputStream)
+            // Create a publisher instance with default settings bound to the topic
+            publisher = Publisher.newBuilder(topicName).setCredentialsProvider(FixedCredentialsProvider.create(creds)).build()
+            Log.d("publish", "$publisher")
 
-                // Once published, returns a server-assigned message id (unique within the topic)
-                Log.d("start", "start publish message to topic")
-                val messageIdFuture: ApiFuture<String>? = publisher?.publish(pubsubMessage)
-                val messageId = messageIdFuture?.get()
-                Log.d("id", messageId)
-            } finally {
-                // When finished with the publisher, shutdown to free up resources.
-                publisher?.shutdown()
-                publisher?.awaitTermination(1, TimeUnit.MINUTES)
-                fileUploadSuccessFlag = false
-                count = 0
-            }
+            val jsonObject = JsonObject()
+            jsonObject.addProperty("token", token)
+            jsonObject.addProperty("email", LoginActivity.userEmail!!)
+            val data = ByteString.copyFromUtf8(jsonObject.toString())
+            val pubsubMessage = PubsubMessage.newBuilder().setData(data).build()
+            Log.d("message", "$pubsubMessage")
+
+            // Once published, returns a server-assigned message id (unique within the topic)
+            Log.d("start", "start publish message to topic")
+            val messageIdFuture: ApiFuture<String>? = publisher?.publish(pubsubMessage)
+            val messageId = messageIdFuture?.get()
+            Log.d("id", messageId)
+        } finally {
+            // When finished with the publisher, shutdown to free up resources.
+            publisher?.shutdown()
+            publisher?.awaitTermination(1, TimeUnit.MINUTES)
+            fileUploadSuccessFlag = false
+            count = 0
         }
     }
 }
