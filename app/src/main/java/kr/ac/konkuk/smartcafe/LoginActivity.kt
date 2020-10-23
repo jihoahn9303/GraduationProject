@@ -77,6 +77,10 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
 
     public override fun onStart() {
         super.onStart()
+//        val account = GoogleSignIn.getLastSignedInAccount(this)
+//        if(account!==null){ // 이미 로그인 되어있을시 바로 메인 액티비티로 이동
+//            toMainActivity(firebaseAuth.currentUser)
+//        }
 
         //btn_googleSignIn.setOnClickListener (this) // 구글 로그인 버튼
         btn_googleSignIn.setOnClickListener {
@@ -145,12 +149,13 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 // Google Sign In was successful, authenticate with Firebase
-                Snackbar.make(findViewById(R.id.activity_login), "로그인 되었습니다.", Snackbar.LENGTH_SHORT).show()
                 val account = task.getResult(ApiException::class.java)
+                Snackbar.make(findViewById(R.id.activity_login), "로그인 되었습니다.", Snackbar.LENGTH_SHORT).show()
+                Log.d("account", "my account : $account")
                 firebaseAuthWithGoogle(account!!)
-
             } catch (e: ApiException) {
                 // Google Sign In failed, update UI appropriately
+                Snackbar.make(findViewById(R.id.activity_login), "로그인 할 계정을 선택해주세요.", Snackbar.LENGTH_SHORT).show()
                 Log.w("LoginActivity", "Google sign in failed", e)
             }
         }
@@ -211,6 +216,14 @@ class LoginActivity : AppCompatActivity(), View.OnClickListener, CoroutineScope 
 
         else { Snackbar.make(findViewById(R.id.activity_login), "로그인 상태가 아닙니다.", Snackbar.LENGTH_SHORT).show() }
     }
+
+//    private fun revokeAccess() { //회원탈퇴
+//        // Firebase sign out
+//        firebaseAuth.signOut()
+//        googleSignInClient.revokeAccess().addOnCompleteListener(this) {
+//
+//        }
+//    }
 
     private fun addUserInFirestore() {
         Thread(kotlinx.coroutines.Runnable {
