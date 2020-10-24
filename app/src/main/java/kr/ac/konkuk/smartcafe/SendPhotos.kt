@@ -92,12 +92,17 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         }
 
         sendImagesBtn.setOnClickListener {
-            setCategoryFlag = false
-            Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
-            launch(Dispatchers.IO) {
-                val jobSendPhoto = launch(Dispatchers.IO) { sendImagesIntent() }
-                jobSendPhoto.join()
-                publishToTopic()
+            if(images!!.size != 3){
+                Toast.makeText(this@SendPhotos, "보낼 수 있는 이미지가 없습니다...", Toast.LENGTH_SHORT).show()
+            }
+            else {
+                setCategoryFlag = false
+                Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
+                launch(Dispatchers.IO) {
+                    val jobSendPhoto = launch(Dispatchers.IO) { sendImagesIntent() }
+                    jobSendPhoto.join()
+                    publishToTopic()
+                }
             }
         }
     }
@@ -112,12 +117,12 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         if (!setCategoryFlag) {
             val dlg: AlertDialog.Builder = AlertDialog.Builder(this@SendPhotos,  android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar_MinWidth)
             dlg.setTitle("카테고리 설정 종료.") //제목
-            dlg.setMessage("OK 버튼을 누르시면 카테고리 분석을 중지합니다.") // 메시지
-            dlg.setPositiveButton("OK") { dialog, _ ->
+            dlg.setMessage("지금 확인 버튼을 누르시면 카테고리 설정을 못할 수도 있습니다.") // 메시지
+            dlg.setPositiveButton("확인") { dialog, _ ->
                 dialog.dismiss()
                 finish()
             }
-            dlg.setNegativeButton("CANCEL") { dialog, _ -> dialog.dismiss() }
+            dlg.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }
             dlg.show()
         }
 
@@ -171,10 +176,14 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
             if(resultCode == Activity.RESULT_OK){
                 if (data!!.clipData != null) {
                     count = data.clipData!!.itemCount
-                    if (count > 3){
-                        Toast.makeText(this, "3장까지의 이미지만 선택 가능합니다...", Toast.LENGTH_SHORT).show()
+                    if (count != 3){
+                        Toast.makeText(this, "3장의 이미지만 선택 가능합니다...", Toast.LENGTH_SHORT).show()
+                        imageSwitcher.setImageURI(null)
                     }
-                    else {
+                    else if(count == 3) {
+                        if(images!!.size == 3){
+                            images!!.clear()
+                        }
                         for (i in 0 until count) {
                             val imageUri = data.clipData!!.getItemAt(i).uri
                             images!!.add(imageUri)
@@ -184,9 +193,8 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
                     }
                 }
                 else {
-                    val imageUri = data.data
-                    imageSwitcher.setImageURI(imageUri)
-                    position = 0
+                    Toast.makeText(this, "3장의 이미지만 선택 가능합니다...", Toast.LENGTH_SHORT).show()
+                    imageSwitcher.setImageURI(null)
                 }
             }
         }
