@@ -10,6 +10,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.api.core.ApiFuture
 import com.google.api.gax.core.FixedCredentialsProvider
@@ -17,21 +18,19 @@ import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.cloud.pubsub.v1.Publisher
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
 import com.google.gson.JsonObject
 import com.google.protobuf.ByteString
 import com.google.pubsub.v1.PubsubMessage
 import com.google.pubsub.v1.TopicName
 import kotlinx.android.synthetic.main.activity_send_photos.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kr.ac.konkuk.smartcafe.LoginActivity.Companion.token
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
-import kotlin.concurrent.timer
 import kotlin.coroutines.CoroutineContext
 
 
@@ -51,7 +50,9 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
     private val projectId = "smartcafe-286310"
     private val topicId = "request-classfier"
 
-
+    companion object {
+        var setCategoryFlag : Boolean = false
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,6 +92,7 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
         }
 
         sendImagesBtn.setOnClickListener {
+            setCategoryFlag = false
             Toast.makeText(this@SendPhotos, "사진 전송 완료! 잠시 후 메시지로 카테고리를 알려드립니다", Toast.LENGTH_LONG).show()
             launch(Dispatchers.IO) {
                 val jobSendPhoto = launch(Dispatchers.IO) { sendImagesIntent() }
@@ -102,7 +104,24 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
 
     override fun onDestroy() {
         super.onDestroy()
+        setCategoryFlag = true
         job.cancel()
+    }
+
+    override fun onBackPressed() {
+        if (!setCategoryFlag) {
+            val dlg: AlertDialog.Builder = AlertDialog.Builder(this@SendPhotos,  android.R.style.Theme_DeviceDefault_Light_Dialog_NoActionBar_MinWidth)
+            dlg.setTitle("카테고리 설정 종료.") //제목
+            dlg.setMessage("OK 버튼을 누르시면 카테고리 분석을 중지합니다.") // 메시지
+            dlg.setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                finish()
+            }
+            dlg.setNegativeButton("CANCEL") { dialog, _ -> dialog.dismiss() }
+            dlg.show()
+        }
+
+        else { finish() }
     }
 
     private fun sendImagesIntent() {
@@ -112,6 +131,16 @@ class SendPhotos : AppCompatActivity(), CoroutineScope {
             mHandler.postDelayed(Runnable { Toast.makeText(this, "보낼 수 있는 이미지가 없습니다...", Toast.LENGTH_SHORT).show() }, 0)
         }
         else{
+            Log.d("delete", "Start deleting image file!")
+            var storageRef : StorageReference? = storage?.reference?.child(LoginActivity.userEmail!!)
+            storageRef?.listAll()?.addOnSuccessListener { it ->
+                it.items.forEach { it2 ->
+                    it2.delete().addOnSuccessListener { _ ->
+                        Log.d("delete", "Success to delete image file!")
+                    }
+                }
+            }
+
             Log.d("start", "image send start")
             send_photo_count = 0
             for (i in 0 until count){
