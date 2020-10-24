@@ -29,6 +29,7 @@ class FCMMessageService : FirebaseMessagingService(){
         if(p0.data != null){
             Log.d("category", "${LoginActivity.category}")
             sendNotification(p0.data["title"], p0.data["message"])
+            SendPhotos.setCategoryFlag = true
             updateCategoryOnFirestore(p0.data["message"])
         }
     }
@@ -83,9 +84,8 @@ class FCMMessageService : FirebaseMessagingService(){
 
                             ref.child("userInfo").child("$subpath")
                                 .updateChildren(update_map)
-                            
-                            LoginActivity.category = category!!
 
+                            LoginActivity.category = category!!
                         }
                     }
 
